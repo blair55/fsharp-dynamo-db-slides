@@ -145,6 +145,9 @@ name: ddb
 
 * OLTP
 
+???
+
+all data returned with single request
 
 ---
 
@@ -153,6 +156,8 @@ template: ddb
 ### Pros
 
 * cloud hosted
+
+* pay-as-you-go pricing
 
 * scalability
 
@@ -178,6 +183,8 @@ template: ddb
 * access patterns must be known
 
 * no adhoc queries, no OLAP
+
+* highly optimized, inflexible
 
 ???
 
@@ -207,19 +214,15 @@ template:ddb2
 
 * Key Value document store
 
-???
 
-realised that join operations are costly and yet the data returned was also unused
-so they did away with joins
-main mode of accessing data is using an item key (get by id)
-
-
----
-template:ddb2
+--
 
 * Tables are schemaless
 
 ???
+
+realised that join operations are costly and yet the data returned was also unused
+main mode of accessing data is using an item key (get by id)
 
 items can varying in attribute length, no limit to number of attributes but item size must be under 400Kb
 
@@ -232,11 +235,18 @@ template:ddb2
 
 * Scalar: string, number, null, bool & binary
 
-* Set: string, numer & binary
+* Set: string, number & binary
 
 * Doc: list, map
 
+--
+
 * [docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes)
+
+
+???
+
+guid & dates as String
 
 ---
 
@@ -295,11 +305,15 @@ Get Item
 
 --
 
-* String based = error prone (S, N, B, SS, NS, BS)
+* String based = error prone (N, NS)
 
 --
 
 * Set duplicates
+
+--
+
+* Empty Set
 
 ???
 
@@ -338,6 +352,10 @@ Demo writing types
 ---
 
 # Reading an item
+
+* complexity in reading rich object
+
+---
 
 
 Show what code to read from dictionary would look like (cumbersome)

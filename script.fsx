@@ -55,7 +55,7 @@ let ``basic put item`` =
 
 
 let ``basic get item`` =
-  [ "id" , new AttributeValue (S = "foo") ]
+  [ "id", new AttributeValue (S = "foo") ]
   |> toDictionary
   |> fun attributes ->
     new GetItemRequest (table, attributes)
@@ -96,6 +96,12 @@ let ``advanced put item`` =
 
 
 
+
+
+
+
+
+
 /// - no constuctor
 /// - more than one constructor
 /// - non number in N
@@ -105,7 +111,11 @@ let ``advanced put item`` =
 
 let ``basic put item with error`` =
   [ "id", new AttributeValue (S = "foo")
-    "an_empty_attribute", new AttributeValue (S="sdf", N="43") ]
+    "my_attr", new AttributeValue () ]
+    // "my_attr", new AttributeValue (S="abc", N="43") ]
+    // "my_attr", new AttributeValue (N="not a number") ]
+    // "my_attr", new AttributeValue (SS = ResizeArray []) ]
+    // "my_attr", new AttributeValue (SS = ResizeArray ["aaa"; "aaa"]) ]
   |> toDictionary
   |> fun attributes ->
     new PutItemRequest (table, attributes)
@@ -179,7 +189,6 @@ let toGzipMemoryStream (s:string) =
   use writer = new StreamWriter (zipStream)
   writer.Write s
   output
-
 
 
 let rec mapAttrValue = function
