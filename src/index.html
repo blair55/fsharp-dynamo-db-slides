@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Wrapping the AWS DynamoDB client with F#</title>
+    <meta charset="utf-8">
+    <style>
+        @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+        @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+        @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+        body {
+            font-family: 'Droid Serif';
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'Yanone Kaffeesatz';
+            font-weight: normal;
+        }
+
+        .remark-code,
+        .remark-inline-code {
+            font-family: 'Ubuntu Mono';
+        }
+    </style>
+</head>
+
+<body>
+    <textarea id="source">
+
+class: center, middle
+
+# Wrapping the AWS DynamoDB client with F# #
+
+---
+
+# TotallyMoney Mission
+
+* Improve the UK's credit score
+
+* Free credit report service launched 2017
+
+* ~3 million customers
+
+
+---
+
+# TotallyMoney Tech
+
+* React & Reach Native
+
+* Node & Typescript
+
+* F# & C#
+
+
+---
+
+# TotallyMoney on AWS
+
+* Lambda
+
+* ECS
+
+* Elastic Beanstalk
+
+* S3, SNS, SQS, Kinesis
+
+* RDS
+
+* DynamoDB
+
+???
+
+since 2011
+
+
+---
+
+# TotallyMoney Tech Team
+
+* ~30 members & growing
+
+* Sunday Times Best Small Companies to Work For
+
+![tech team](teamsmall.jpg)
+
+???
+
+includes infosec & ops
+
+
+---
+
+# Me
+
+beer photo
+C# background
+I don't know category theory
+worship Scott W
+    
+???
+    
+I just know this code is highly readable
+I want to share this journey of understanding what this means
+
+
+---
+
+# What's the plan?
+
+![venn](venn.png)
+
+
+---
+
+# What's the plan?
+
+* Explore DynamoDB
+
+* Model with F#
+
+* Introduce the Reader applicative
+
+???
+
+dynamo db provides a nice interface for wrapping with Reader
+then run some fsi stuff
+just shout questions
+
+
+---
+
+name: ddb
+
+<!-- background-position: top -->
+
+# DynamoDB
+
+* NoSQL
+
+* Key-value document store
+
+* OLTP
+
+
+---
+
+template: ddb
+
+### Pros
+
+* cloud hosted
+
+* scalability
+
+* remains fast
+
+* flexible, complex schema
+
+???
+
++ no normalizing data, can be stored with single write to disk
++ no performance hit with joins
++ no performance hit with ACID transactions
+
+
+---
+
+template: ddb
+
+### Cons
+
+* upfront design
+
+* access patterns must be known
+
+* no adhoc queries, no OLAP
+
+???
+
+- single table design steep learning curve
+
+
+---
+
+# FSharp.AWS.DynamoDb 
+
+* Fully featured
+
+* [https://github.com/fsprojects/FSharp.AWS.DynamoDB](https://github.com/fsprojects/FSharp.AWS.DynamoDB)
+
+???
+
+code I will show is in production but not full library
+
+
+---
+name:ddb2
+# DynamoDB continued...
+
+
+---
+template:ddb2
+
+* Key Value document store
+
+???
+
+realised that join operations are costly and yet the data returned was also unused
+so they did away with joins
+main mode of accessing data is using an item key (get by id)
+
+
+---
+template:ddb2
+
+* Tables are schemaless
+
+???
+
+items can varying in attribute length, no limit to number of attributes but item size must be under 400Kb
+
+
+---
+
+template:ddb2
+
+### Attribute types
+
+* Scalar: string, number, null, bool & binary
+
+* Set: string, numer & binary
+
+* Doc: list, map
+
+* [docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes)
+
+---
+
+template:ddb2
+
+```fsharp
+new Dictionary<string, AttributeValue>()
+```
+
+???
+
+Get & Set
+
+
+---
+
+template:ddb2
+
+```fsharp
+new AttributeValue(S = "foo")
+```
+
+---
+
+template:ddb2
+
+```fsharp
+new AttributeValue(N = "1.23")
+```
+
+---
+
+# Demo
+
+???
+
+Write Item
+Get Item
+
+
+---
+
+# Client library review
+
+--
+
+* Cumbersome & verbose
+
+--
+
+* Conversion to C# list needed
+
+--
+
+* Zero & multiple values could be set on the AttVal constructor
+
+--
+
+* String based = error prone (S, N, B, SS, NS, BS)
+
+--
+
+* Set duplicates
+
+???
+
+Enforce Set semantics with F# set type
+Does not make illegal states unrepresentable
+
+
+---
+
+# The Attribute Type Model
+
+--
+
+* Illegal states unrepresentable (exactly one constructor used)
+
+--
+
+* Can work with F# `list`
+
+--
+
+* Empty set problem gone
+
+--
+
+* Set duplicate problem gone
+
+--
+
+* Cannot pass a string to `N`
+
+???
+
+Demo writing types
+
+---
+
+# Reading an item
+
+
+Show what code to read from dictionary would look like (cumbersome)
+
+Enter the Applicative
+Result, Async, Option
+you've probably encountered these types before, and they can all be modelled in an applicative way.
+
+Enter Reader
+Not computation expression
+only retn, map & apply
+
+
+
+
+ACT 3
+
+
+
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script>
+        var slideshow = remark.create();
+    </script>
+</body>
+
+</html>

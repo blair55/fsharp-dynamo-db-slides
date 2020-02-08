@@ -1,0 +1,11 @@
+bin/
+obj/
+build/
+deploy/
+publish/
+packages/
+paket-files/
+node_modules/
+.serverless/
+.ionide/
+**/.idea/
