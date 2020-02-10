@@ -47,6 +47,19 @@ class: center, middle
 
 ---
 
+# TotallyMoney Tech Team
+
+* ~30 members & growing
+
+![tech team](teamsmall.jpg)
+
+???
+
+includes infosec & ops
+
+
+---
+
 # TotallyMoney Tech
 
 * React & Reach Native
@@ -76,36 +89,39 @@ class: center, middle
 
 since 2011
 
-
 ---
 
-# TotallyMoney Tech Team
+# We're hiring!
 
-* ~30 members & growing
+* Backend and frontend
 
-* Sunday Times Best Small Companies to Work For
-
-![tech team](teamsmall.jpg)
-
-???
-
-includes infosec & ops
+* Sunday Times Best Small Companies to Work For 2019
 
 
 ---
 
 # Me
 
-beer photo
-C# background
-I don't know category theory
-worship Scott W
+* C# background
+
+* F# since 2012
+
+* I don't know category theory!
+
+
+---
+
+# F# for fun and profit
+
+* Scott Wlaschin
+
+![scott](https://ndc-london.com/images/speaker/scott_Wlaschin-300.jpg)
+
     
 ???
     
 I just know this code is highly readable
 I want to share this journey of understanding what this means
-
 
 ---
 
@@ -113,29 +129,20 @@ I want to share this journey of understanding what this means
 
 ![venn](venn.png)
 
-
----
-
-# What's the plan?
-
-* Explore DynamoDB
-
-* Model with F#
-
-* Introduce the Reader applicative
-
 ???
 
 dynamo db provides a nice interface for wrapping with Reader
+
 then run some fsi stuff
+
 just shout questions
+
+domain modelling principles
 
 
 ---
 
 name: ddb
-
-<!-- background-position: top -->
 
 # DynamoDB
 
@@ -206,14 +213,18 @@ code I will show is in production but not full library
 
 ---
 name:ddb2
+
 # DynamoDB continued...
 
 
 ---
 template:ddb2
 
-* Key Value document store
+* No joins!
 
+--
+
+* Get item, Query & Scan
 
 --
 
@@ -241,7 +252,7 @@ template:ddb2
 
 --
 
-* [docs](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes)
+* [Amazon DynamoDB documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes)
 
 
 ???
@@ -305,7 +316,7 @@ Get Item
 
 --
 
-* String based = error prone (N, NS)
+* Error prone string numbers (N, NS)
 
 --
 
@@ -321,6 +332,7 @@ Enforce Set semantics with F# set type
 Does not make illegal states unrepresentable
 
 
+
 ---
 
 # The Attribute Type Model
@@ -328,10 +340,6 @@ Does not make illegal states unrepresentable
 --
 
 * Illegal states unrepresentable (exactly one constructor used)
-
---
-
-* Can work with F# `list`
 
 --
 
@@ -345,34 +353,131 @@ Does not make illegal states unrepresentable
 
 * Cannot pass a string to `N`
 
+--
+
+* Can work with F# `list`
+
 ???
 
-Demo writing types
+Demo rich put item
 
 ---
 
-# Reading an item
+# Questions?
+
+???
 
 * complexity in reading rich object
 
 ---
 
+# Domain Types
 
-Show what code to read from dictionary would look like (cumbersome)
+--
 
-Enter the Applicative
-Result, Async, Option
-you've probably encountered these types before, and they can all be modelled in an applicative way.
+```fsharp
+type Customer =
+  { Id : Guid
+    Email : String
+    IsVerified : Boolean
+    DateOfBirth : DateTime
+    Balance : Decimal }
+```
 
-Enter Reader
-Not computation expression
-only retn, map & apply
+--
+
+> Our challenge is to turn a Dictionary into a record!
+
+---
+
+# Domain Types
+
+```fsharp
+let buildCustomer id email verified dob balance =
+  { Id = id 
+    Email = email
+    IsVerified = verified 
+    DateOfBirth = dob 
+    Balance = balance }
+```
+
+--
+
+```fsharp
+let readCustomer =
+  buildCustomer
+  <!> readGuid   "id"
+  <*> readString "email"
+  <*> readBool   "verified"
+  <*> readDate   "dob"
+  <*> readNumber "balance" decimal
+```
+
+???
+
+demo
 
 
+---
+
+# Reader Applicative
+
+* using `map` & `apply` function
+
+* parallel implementation
+
+* not monadic `return` & `bind`
 
 
-ACT 3
+---
 
+# Nested types
+
+```fsharp
+type Address =
+  { FirstLine : String
+    SecondLine : String
+    PostCode : String
+    CountryCode : int }
+```
+
+```fsharp
+type Customer =
+  { Id : Guid
+    Email : String
+    Address : Address
+    IsVerified : Boolean
+    DateOfBirth : DateTime
+    Balance : Decimal }
+```
+
+???
+
+document db gonna have nested types
+
+
+---
+
+# Result Reader
+
+* idomatic error handling
+
+* option type
+
+???
+
+demo
+
+
+---
+
+# Queries & beyond
+
+---
+
+# Fin
+
+---
 
 
 
@@ -382,6 +487,12 @@ ACT 3
     <script>
         var slideshow = remark.create();
     </script>
+    <style>
+        .remark-code {
+            font-size: 24px;
+            line-height: 30px;
+        }
+    </style>
 </body>
 
 </html>
