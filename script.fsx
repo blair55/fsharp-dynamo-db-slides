@@ -19,7 +19,7 @@ let rsp f g =
   with | :? AggregateException as e -> prnt e.InnerException.Message
 
 
-
+/// THEME?
 
 
 let ``empty attribute value`` =
@@ -116,11 +116,11 @@ let ``get rich item`` =
 
 let ``basic put item with error`` =
   [ "id", new AttributeValue (S = "fail")
-    // "my_attr", new AttributeValue () ]
+    "my_attr", new AttributeValue () ]
     // "my_attr", new AttributeValue (S="abc", N="43") ]
     // "my_attr", new AttributeValue (N="not a number") ]
     // "my_attr", new AttributeValue (SS = ResizeArray []) ]
-    "my_attr", new AttributeValue (SS = ResizeArray ["aaa"; "aaa"]) ]
+    // "my_attr", new AttributeValue (SS = ResizeArray ["aaa"; "aaa"]) ]
   |> toDictionary
   |> fun attributes ->
     new PutItemRequest (table, attributes)

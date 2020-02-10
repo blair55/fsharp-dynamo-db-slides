@@ -1,5 +1,6 @@
 bin/
 obj/
+images/
 build/
 deploy/
 publish/
