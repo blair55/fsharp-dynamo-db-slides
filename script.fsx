@@ -516,24 +516,27 @@ let getAttr key f =
 
 let getAttrString key =
   getAttr key (fun (a:AttributeValue) -> a.S)
+  >> Result.mapError List.singleton
   
 let getAttrBool key =
   getAttr key (fun (a:AttributeValue) -> a.BOOL)
+  >> Result.mapError List.singleton
 
 let getAttrNumber key =
   getAttr key (fun (a:AttributeValue) -> a.N)
+  >> Result.mapError List.singleton
 
 let getAttrDate key =
   getAttrString key
-  >> Result.bind (parseDate (sprintf "could not parse %s as date" key))
+  >> Result.bind (parseDate [sprintf "could not parse %s as date" key])
 
 let getAttrGuid key =
   getAttrString key
-  >> Result.bind (parseGuid (sprintf "could not parse %s as guid" key))
+  >> Result.bind (parseGuid [sprintf "could not parse %s as guid" key])
 
 let getAttrDecimal key =
   getAttrNumber key
-  >> Result.bind (parseDecimal (sprintf "could not parse %s as decimal" key))
+  >> Result.bind (parseDecimal [sprintf "could not parse %s as decimal" key])
 
 
 
@@ -550,15 +553,17 @@ let getAttrDecimal key =
 
 
 
+type AttrMap =
+  Map<string, AttributeValue>
 
 
 type AttrReader<'a> =
-  AttrReader of (Map<string, AttributeValue> -> 'a)
+  AttrReader of (AttrMap -> 'a)
 
 
-/// "give me an attr key, and I will give a you a AttrReader that, 
-///  when given an map of attributes, if successful,
-///  will return the string value from the attribue"
+/// " give me an attr key, and I will give a you an attr reader, 
+///   that, when given an attr map, will return the
+///   result of trying to read & parse the attr key "
 
 
 let stringAttrReader key =
@@ -608,35 +613,86 @@ let boolAttrReader =
 
 
 
+/// retn :                   'a -> Wrapper<'a>
+/// map  :           ('a -> 'b) -> Wrapper<'a> -> Wrapper<'b>
+/// bind :  ('a -> Wrapper<'b>) -> Wrapper<'a> -> Wrapper<'b>
+/// apply:  Wrapper<('a -> 'b)> -> Wrapper<'a> -> Wrapper<'b>
+
+
+
+
+
+
+
 
 
 
 module AttrReader =
 
-  let run (AttrReader f) m =
-    f m
+
+
+  /// retn : 'a -> Wrapper<'a>
 
   let retn a =
     AttrReader (fun _ -> a)
 
-  let map f attrReader =
+
+
+
+
+
+
+  /// UNWRAPPER FUNCTION
+
+  let run (AttrReader f) m =
+    f m
+
+
+
+
+
+
+
+
+  /// map : ('a -> 'b) -> Wrapper<'a> -> Wrapper<'b>
+
+  let map f readerA =
     let newReader m =
-      let x = run attrReader m
-      f x
+      let unwrappedA = run readerA m
+      let b = f unwrappedA
+      b
     AttrReader newReader
 
-  let bind f attrReader = 
+
+
+
+
+
+
+  /// bind : ('a -> Wrapper<'b>) -> Wrapper<'a> -> Wrapper<'b>
+
+  let bind f readerA = 
     let newReader m =
-      let a = run attrReader m
-      let bReader = f a
-      run bReader m 
+      let unwrappedA = run readerA m
+      let readerB = f unwrappedA
+      let unwrappedB = run readerB m 
+      unwrappedB
     AttrReader newReader
 
-  let apply fReader attrReader =
+
+
+
+
+
+
+  /// apply : Wrapper<('a -> 'b)> -> Wrapper<'a> -> Wrapper<'b>
+
+  let apply f readerA =
     let newReader m =
-      let f = run fReader m
-      let a = run attrReader m
-      f a
+      let unwrappedF = run f m
+      let unwrappedA = run readerA m
+      let b = unwrappedF unwrappedA
+      b
     AttrReader newReader
 
 
@@ -654,9 +710,11 @@ let buildCustomer id email verified dob balance =
     Balance = balance }
 
 
-// let ``customer reader`` =
-//   let builder = AttrReader.map buildCustomer
-//   builder (guidAttrReader "id")
+
+let ``mapped builder`` =
+  AttrReader.map buildCustomer
+
+// ``mapped builder`` (guidAttrReader "id")
 
 
 
@@ -666,8 +724,8 @@ let buildCustomer id email verified dob balance =
 /// Result<'a>
 
 /// AttrReader<'a>
-/// AttrReaderResult<'a>
 
+/// AttrReader<Result<'a, 'b>>
 
 
 
@@ -679,184 +737,152 @@ let buildCustomer id email verified dob balance =
 
 module AttrReaderResult =
 
-  let map f =
-    AttrReader.map (Result.map) f
+
+
+
+  /// retn : 'a -> Wrapper<'a>
 
   let retn a =
-    AttrReader.retn (Result.Ok a)
-
-  // let bind f attrReader = 
-  //   let newReader m =
-  //     let a = run attrReader m
-  //     let bReader = f a
-  //     run bReader m 
-  //   AttrReader newReader
+    AttrReader.retn (Ok a)
 
 
-  let bind f attrReader =
+
+
+
+
+
+  /// map : ('a -> 'b) -> Wrapper<'a> -> Wrapper<'b>
+
+  let map f readerResultA =
     let newReader m =
-      let readerResult = 
-        match AttrReader.run attrReader m with
-        | Ok x -> f x
-        | Error err -> Error err |> AttrReader.retn
-      AttrReader.run readerResult m
+      let resultA =
+        AttrReader.run readerResultA m
+      let resultB =
+        match resultA with
+        | Ok unwrappedA ->
+          let b = f unwrappedA
+          let resultB = Ok b
+          resultB
+        | Error e ->
+          let resultC = Error e
+          resultC
+      resultB
     AttrReader newReader
 
 
-  let apply fReader attrReader =
+
+
+
+  /// bind : ('a -> Wrapper<'b>) -> Wrapper<'a> -> Wrapper<'b>
+
+  let bind f readerResultA =
     let newReader m =
-      let f = run fReader m
-      let a = run attrReader m
-      f a
+      let readerResultB = 
+        let resultA =
+          AttrReader.run readerResultA m
+        match resultA with
+        | Ok a ->
+          let readerResultB = f a
+          readerResultB
+        | Error e ->
+          let readerResultC =
+            AttrReader.retn (Error e)
+          readerResultC
+      let resultB =
+        AttrReader.run readerResultB m
+      resultB
     AttrReader newReader
 
 
 
-// let (<!>) = AttrReader.map
+
+
+
+
+
+
+  /// apply : Wrapper<('a -> 'b)> -> Wrapper<'a> -> Wrapper<'b>
+
+  let apply f readerResultA =
+    let newReader m =
+      let resultF =
+        AttrReader.run f m
+      let resultA =
+        AttrReader.run readerResultA m
+      let resultB =
+        match resultF, resultA with
+        | Ok f    , Ok a     -> Ok (f a)
+        | Error e1, Error e2 -> Error (e1 @ e2)
+        | Error e1, _        -> Error e1
+        | _       , Error e2 -> Error e2
+      resultB
+    AttrReader newReader
+
+
+
+
+
+
+
+
+
+let ``mapped result builder`` x =
+  AttrReaderResult.map buildCustomer x
+
+
+
+
+
+
+let r0 =
+  buildCustomer
+
+let r1 =
+  AttrReaderResult.map r0
+
+let r2 =
+  r1 (guidAttrReader "id")
+
+let r3 =
+  AttrReaderResult.apply r2 (stringAttrReader "email")
+
+let r4 =
+  AttrReaderResult.apply r3 (boolAttrReader "verified")
+
+let r5 =
+  AttrReaderResult.apply r4 (dateAttrReader "dob")
+
+let r6 =
+  AttrReaderResult.apply r5 (decimalAttrReader "balance")
+
+
+
+
+
+
+
+
+
+
+
+
+let (<!>) = AttrReaderResult.map
 // let (>>=) = AttrReader.bind
-// let (<*>) = AttrReader.apply
+let (<*>) = AttrReaderResult.apply
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-type D = Dictionary<string,AttributeValue>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/// map   :          ('a -> 'b)  -> Wrapper<'a> -> Wrapper<'b>
-
-/// apply :  Wrapper<('a -> 'b)> -> Wrapper<'a> -> Wrapper<'b>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-type Reader<'a, 'b> =
-  Reader of ('a -> 'b)
-
-module Reader =
-
-  let run (Reader f) a =
-    f a
-
-  let map f r =
-    Reader (
-      fun a ->
-        let b = run r a
-        f b)
-
-  let apply f r =
-    Reader (
-      fun a ->
-        let b = run r a
-        let g = run f a
-        g b)
-
-
-
-
-
-
-
-
-
-
-
-
-let readString key   = Reader (fun (d:D) -> d.[key].S)
-let readBool   key   = Reader (fun (d:D) -> d.[key].BOOL)
-let readGuid   key   = Reader (fun (d:D) -> d.[key].S |> Guid.Parse)
-let readDate   key   = Reader (fun (d:D) -> d.[key].S |> DateTime.Parse)
-let readNumber key f = Reader (fun (d:D) -> d.[key].N |> f)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-let (<!>) = Reader.map
-let (<*>) = Reader.apply
 
 
 
 
 let readCustomer =
   buildCustomer
-  <!> readGuid   "id"
-  <*> readString "email"
-  <*> readBool   "verified"
-  <*> readDate   "dob"
-  <*> readNumber "balance" decimal
-
-
-
-
-
-
-let r0 = buildCustomer
-
-// let r1 = Reader.map r0
-
-// let r2 = r1 (readGuid "id")
-
-// let r3 = Reader.apply r2 (readString "email")
-
-// let r4 = Reader.apply r3 (readBool "verified")
-
-// let r5 = Reader.apply r4 (readDate "dob")
-
-// let r6 = Reader.apply r5 (readNumber "balance" decimal)
-
+  <!> guidAttrReader    "id"
+  <*> stringAttrReader  "email"
+  <*> boolAttrReader    "verified"
+  <*> dateAttrReader    "dob"
+  <*> decimalAttrReader "balance"
 
 
 
@@ -878,28 +904,40 @@ let r0 = buildCustomer
 
 
 let getItem tableName reader fields =
-  new GetItemRequest (tableName, mapAttrsToDictionary fields)
+  mapAttrsToDictionary fields
+  |> fun attrs -> new GetItemRequest (tableName, attrs)
   |> client.GetItemAsync
   |> runSync
   |> fun r -> r.Item
-  |> Reader.run reader
+  |> toMap
+  |> AttrReader.run reader
 
 
-let customerId =
-  Guid.NewGuid()
 
 
-let ``put customer`` =
+let ``get customer with reader`` =
+  [ Attr ("id", ScalarGuid customerId) ]
+  |> getItem table readCustomer
+
+
+
+
+
+
+let ``put bad customer`` =
   [ Attr ("id", ScalarGuid customerId )
-    Attr ("email", ScalarString "someone@tm.com")
+  // [ Attr ("id", ScalarString "bad id" )
+    Attr ("email", ScalarString "bad_record@tm.com")
     Attr ("verified", ScalarBool true)
-    Attr ("dob", ScalarString "2000-01-01")
-    Attr ("balance", ScalarDecimal 3405.25m) ]
+    Attr ("dob", ScalarString "not a date")
+    Attr ("balance", ScalarDecimal 23m) ]
+    // Attr ("balance_typo", ScalarDecimal 23m) ]
   |> putItem table
 
 
-let ``get customer`` =
+let ``get bad customer`` =
   [ Attr ("id", ScalarGuid customerId) ]
+  // [ Attr ("id", ScalarString "bad id") ]
   |> getItem table readCustomer
 
 
@@ -1071,31 +1109,3 @@ let ``get nested customer`` =
 
 
 
-
-
-
-
-/// READER RESULT
-
-module ReaderResult =
-
-  // let retn a =
-  //   Ok a |> Reader.retn
-
-  let map f =
-    Result.map f |> Reader.map
-
-  let apply f r =
-    Reader <| fun a ->
-      let fa = Reader.run f a
-      let fb = Reader.run r a
-      match fa, fb with
-      | Ok a    , Ok b     -> Ok (a b)
-      | Error ea, Error eb -> Error [ ea; eb ]
-      | Error e , _        -> Error [ e ]
-      | _       , Error e  -> Error [ e ]
-
-
-
-let readStringR key =
-  Reader (fun (d:D) -> if d.ContainsKey(key) then Ok(d.[key].S) else Error(sprintf "missing key: %s" key))
