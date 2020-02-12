@@ -1,6 +1,7 @@
 bin/
 obj/
 images/
+fonts/
 build/
 deploy/
 publish/

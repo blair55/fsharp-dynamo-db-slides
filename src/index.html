@@ -5,24 +5,47 @@
     <title>Wrapping the AWS DynamoDB client with F#</title>
     <meta charset="utf-8">
     <style>
-        @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+        /* @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
         @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+        @import url(https://fonts.googleapis.com/css?family=sourcesanspro);
+        @import url(https://fonts.gstatic.com/s/sourcesanspro/v13/6xK3dSBYKcSV-LCoeQqfX1RYOo3qOK7g.ttf); */
+
         @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
 
+        @font-face {
+            font-family: 'Buenos Aires';
+            src: url('fonts/BuenosAires-SemiBold.woff2');
+        }
+
+        @font-face {
+            font-family: 'Source Sans Pro';
+            src: url('fonts/source-sans-pro.ttf');
+        }
+
         body {
-            font-family: 'Droid Serif';
+            font-family: 'Source Sans Pro';
         }
 
         h1,
         h2,
         h3 {
-            font-family: 'Yanone Kaffeesatz';
+            font-family: 'Buenos Aires';
             font-weight: normal;
+        }
+
+        .remark-container {
+            background-image: url('https://dwm61dzbbkkc8.cloudfront.net/img/background-image-large.jpg');
+        }
+
+        .remark-slide-scaler {
+            box-shadow: 0 0 31px #000;
         }
 
         .remark-code,
         .remark-inline-code {
             font-family: 'Ubuntu Mono';
+            font-size: 24px;
+            line-height: 30px;
         }
     </style>
 </head>
@@ -40,7 +63,11 @@ class: center, middle
 
 * Improve the UK's credit score
 
+--
+
 * Free credit report service launched 2017
+
+--
 
 * ~3 million customers
 
@@ -49,9 +76,7 @@ class: center, middle
 
 # TotallyMoney Tech Team
 
-* ~30 members & growing
-
-![tech team](teamsmall.jpg)
+.center[![tech team](images/teamsmall.jpg)]
 
 ???
 
@@ -64,20 +89,32 @@ includes infosec & ops
 
 * React & Reach Native
 
+--
+
 * Node & Typescript
 
+--
+
 * F# & C#
+
+--
+
+* Elm
 
 
 ---
 
 # TotallyMoney on AWS
 
-* Lambda
+--
+
+* Elastic Beanstalk
 
 * ECS
 
-* Elastic Beanstalk
+* Lambda
+
+--
 
 * S3, SNS, SQS, Kinesis
 
@@ -95,8 +132,13 @@ since 2011
 
 * Backend and frontend
 
+--
+
 * Sunday Times Best Small Companies to Work For 2019
 
+--
+
+* Say hello!
 
 ---
 
@@ -106,7 +148,11 @@ since 2011
 
 * F# since 2012
 
+--
+
 * @nickblair
+
+--
 
 * I don't know category theory!
 
@@ -129,11 +175,13 @@ I want to share this journey of understanding what this means
 
 # What's the plan?
 
-![venn](venn.png)
+![venn](images/venn.png)
 
 ???
 
 dynamo db provides a nice interface for wrapping with Reader
+
+see whats wrong
 
 then run some fsi stuff
 
@@ -148,15 +196,15 @@ name: ddb
 
 # DynamoDB
 
-* NoSQL
-
 * Key-value document store
+
+* NoSQL
 
 * OLTP
 
 ???
 
-all data returned with single request
+that means: its 
 
 ---
 
@@ -164,13 +212,17 @@ template: ddb
 
 ### Pros
 
-* cloud hosted
+* cloud hosted & fully managed
+
+--
 
 * pay-as-you-go pricing
 
-* scalability
+--
 
-* remains fast
+* performance at scale
+
+--
 
 * flexible, complex schema
 
@@ -178,7 +230,6 @@ template: ddb
 
 + no normalizing data, can be stored with single write to disk
 + no performance hit with joins
-+ no performance hit with ACID transactions
 
 
 ---
@@ -187,17 +238,19 @@ template: ddb
 
 ### Cons
 
-* upfront design
-
 * access patterns must be known
 
-* no adhoc queries, no OLAP
+--
+
+* no OLAP
+
+--
 
 * highly optimized, inflexible
 
-???
+--
 
-- single table design steep learning curve
+* learning curve
 
 
 ---
@@ -415,10 +468,6 @@ let readCustomer =
   <*> readNumber "balance" decimal
 ```
 
-???
-
-demo
-
 
 ---
 
@@ -429,6 +478,10 @@ demo
 * parallel implementation
 
 * not monadic `return` & `bind`
+
+???
+
+demo
 
 
 ---
@@ -487,14 +540,13 @@ demo
     <script src="https://remarkjs.com/downloads/remark-latest.min.js">
     </script>
     <script>
-        var slideshow = remark.create();
+        var slideshow = remark.create({
+            highlightLanguage: 'fsharp',
+            highlightStyle: 'solarized-dark',
+            countIncrementalSlides: false,
+            // slideNumberFormat: () => "",
+        });
     </script>
-    <style>
-        .remark-code {
-            font-size: 24px;
-            line-height: 30px;
-        }
-    </style>
 </body>
 
 </html>
