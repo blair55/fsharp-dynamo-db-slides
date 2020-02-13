@@ -10,6 +10,9 @@ open Amazon.Runtime
 open Amazon.DynamoDBv2
 open Amazon.DynamoDBv2.Model
 
+
+
+
 let table = "fs-wrapper"
 let credentials = new StoredProfileAWSCredentials("sandbox");
 let client = new AmazonDynamoDBClient (credentials, RegionEndpoint.EUWest2)
@@ -205,7 +208,7 @@ Set.empty |> Set.add 4 |> Set.add 5 |> Set.add 4
 
 
 
-/// The attribute type domain model
+/// DOMAIN MODEL
 
 type Attr =
   | Attr of name:string * value:AttrValue
@@ -867,7 +870,6 @@ let r6 =
 
 
 let (<!>) = AttrReaderResult.map
-// let (>>=) = AttrReader.bind
 let (<*>) = AttrReaderResult.apply
 
 
@@ -955,7 +957,6 @@ let ``get bad customer`` =
 
 
 
-
 /// OPTIONAL ATTRIBUTE
 
 
@@ -978,17 +979,31 @@ let buildCustomerWithPhone id email verified dob balance phone =
 
 
 
-let readStringOption key =
-  (fun (d:D) -> if d.ContainsKey(key) then Some(d.[key].S) else None) |> Reader
+
+
+let stringOptionAttrReader key =
+  AttrReader (Map.tryFind key >> Option.map (fun (a:AttributeValue) -> a.S) >> Ok)
+
+
+
+
+
+
+
 
 let readCustomerWithPhone =
   buildCustomerWithPhone
-  <!> readGuid         "id"
-  <*> readString       "email"
-  <*> readBool         "verified"
-  <*> readDate         "dob"
-  <*> readNumber       "balance" decimal
-  <*> readStringOption "phone"
+  <!> guidAttrReader         "id"
+  <*> stringAttrReader       "email"
+  <*> boolAttrReader         "verified"
+  <*> dateAttrReader         "dob"
+  <*> decimalAttrReader      "balance"
+  <*> stringOptionAttrReader "phone"
+
+
+
+
+
 
 
 let ``get customer with phone`` =
@@ -1013,7 +1028,7 @@ let ``put customer with phone`` =
 
 
 
-/// NESTED
+/// NESTED RECORD
 
 type Address =
   { FirstLine : String
@@ -1046,26 +1061,59 @@ let buildCustomerWithAddress id email verified address dob balance =
     Balance = balance }
 
 
-let readMap key f =
-  Reader (fun (d:D) -> d.[key].M |> Reader.run f)
+
+
+let getAttrMap key =
+  getAttr key (fun (a:AttributeValue) -> a.M)
+  >> Result.mapError List.singleton
+
+let mapAttrReader key f =
+  getAttr key (fun (a:AttributeValue) -> toMap a.M)
+  >> Result.mapError List.singleton
+  >> Result.bind (AttrReader.run f)
+  |> AttrReader
+
+
+
+
+
+
+
+
+
+let parseInt e (s:String) =
+  match Int32.TryParse s with
+  | true, x -> Ok x
+  | _ -> Error e
+
+let getAttrInt key =
+  getAttrNumber key
+  >> Result.bind (parseInt [sprintf "could not parse %s as integer" key])
+
+let intAttrReader =
+  getAttrInt >> AttrReader
+
+
+
+
 
 
 
 let readAddress =
   buildAddress
-  <!> readString "first"
-  <*> readString "second"
-  <*> readString "postcode"
-  <*> readNumber "country" int
+  <!> stringAttrReader "first"
+  <*> stringAttrReader "second"
+  <*> stringAttrReader "postcode"
+  <*> intAttrReader    "country"
 
 let readCustomerWithAddress =
   buildCustomerWithAddress
-  <!> readGuid    "id"
-  <*> readString  "email"
-  <*> readBool    "verified"
-  <*> readMap     "address" readAddress
-  <*> readDate    "dob"
-  <*> readNumber  "balance" decimal
+  <!> guidAttrReader    "id"
+  <*> stringAttrReader  "email"
+  <*> boolAttrReader    "verified"
+  <*> mapAttrReader     "address" readAddress
+  <*> dateAttrReader    "dob"
+  <*> decimalAttrReader "balance"
 
 
 
@@ -1074,10 +1122,11 @@ let readCustomerWithAddress =
 
 
 
-
+let nestedCustomerId =
+  Guid.NewGuid()
 
 let ``put nested customer`` =
-  [ Attr ("id", ScalarGuid customerId )
+  [ Attr ("id", ScalarGuid nestedCustomerId )
     Attr ("email", ScalarString "someone@here.com")
     Attr ("verified", ScalarBool true)
     Attr ("address",  
@@ -1092,8 +1141,11 @@ let ``put nested customer`` =
 
 
 let ``get nested customer`` =
-  [ Attr ("id", ScalarGuid customerId) ]
+  // [ Attr ("id", ScalarGuid customerId) ]
+  [ Attr ("id", ScalarGuid nestedCustomerId) ]
   |> getItem table readCustomerWithAddress
+
+
 
 
 

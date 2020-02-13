@@ -161,9 +161,8 @@ since 2011
 
 # F# for fun and profit
 
-* Scott Wlaschin
 
-![scott](https://ndc-london.com/images/speaker/scott_Wlaschin-300.jpg)
+.center[![scott](https://ndc-london.com/images/speaker/scott_Wlaschin-300.jpg)]
 
     
 ???
@@ -202,15 +201,13 @@ name: ddb
 
 * OLTP
 
-???
 
-that means: its 
+.center[![dynamodb](images/dbicon.png)]
+
 
 ---
 
-template: ddb
-
-### Pros
+# DynamoDB Pros
 
 * cloud hosted & fully managed
 
@@ -234,19 +231,17 @@ template: ddb
 
 ---
 
-template: ddb
-
-### Cons
+# DynamoDB Cons
 
 * access patterns must be known
 
 --
 
-* no OLAP
+* highly optimized, inflexible
 
 --
 
-* highly optimized, inflexible
+* no OLAP
 
 --
 
@@ -283,7 +278,7 @@ template:ddb2
 
 --
 
-* Tables are schemaless
+* Tables are schemaless but records are max 400Kb
 
 ???
 
@@ -307,12 +302,17 @@ template:ddb2
 
 --
 
+* Guid as scalar string
+
+* DateTime as scalar string or number
+
+--
+
 * [Amazon DynamoDB documentation](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.NamingRulesDataTypes.html#HowItWorks.DataTypes)
 
 
 ???
 
-guid & dates as String
 
 ---
 
@@ -461,11 +461,11 @@ let buildCustomer id email verified dob balance =
 ```fsharp
 let readCustomer =
   buildCustomer
-  <!> readGuid   "id"
-  <*> readString "email"
-  <*> readBool   "verified"
-  <*> readDate   "dob"
-  <*> readNumber "balance" decimal
+  <!> guidAttrReader    "id"
+  <*> stringAttrReader  "email"
+  <*> boolAttrReader    "verified"
+  <*> dateAttrReader    "dob"
+  <*> decimalAttrReader "balance"
 ```
 
 
@@ -479,37 +479,6 @@ let readCustomer =
 
 * not monadic `return` & `bind`
 
-???
-
-demo
-
-
----
-
-# Nested types
-
-```fsharp
-type Address =
-  { FirstLine : String
-    SecondLine : String
-    PostCode : String
-    CountryCode : int }
-```
-
-```fsharp
-type Customer =
-  { Id : Guid
-    Email : String
-    Address : Address
-    IsVerified : Boolean
-    DateOfBirth : DateTime
-    Balance : Decimal }
-```
-
-???
-
-document db gonna have nested types
-
 
 ---
 
@@ -519,14 +488,11 @@ document db gonna have nested types
 
 * option type
 
-???
-
-demo
-
 
 ---
 
 # Queries & beyond
+
 
 ---
 
