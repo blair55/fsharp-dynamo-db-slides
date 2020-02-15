@@ -91,6 +91,10 @@ includes infosec & ops
 
 --
 
+* Netlify & Gatsby
+
+--
+
 * Node & Typescript
 
 --
@@ -106,19 +110,21 @@ includes infosec & ops
 
 # TotallyMoney on AWS
 
---
-
 * Elastic Beanstalk
 
-* ECS
+* ECS (EC2/Fargate)
 
-* Lambda
+* Lambda via Serverless Framework
 
 --
 
-* S3, SNS, SQS, Kinesis
+* S3, SNS, SQS
+
+* Kinesis Firehose
 
 * RDS
+
+* Athena
 
 * DynamoDB
 
@@ -296,9 +302,14 @@ template:ddb2
 
 * Scalar: string, number, null, bool & binary
 
+--
+
 * Set: string, number & binary
 
+--
+
 * Doc: list, map
+
 
 --
 
@@ -406,11 +417,11 @@ Does not make illegal states unrepresentable
 
 --
 
-* Cannot pass a string to `N`
+* Cannot pass a string to "N"
 
 --
 
-* Can work with F# `list`
+* Can work with F# list
 
 ???
 
@@ -428,8 +439,6 @@ Demo rich put item
 
 # Domain Types
 
---
-
 ```fsharp
 type Customer =
   { Id : Guid
@@ -443,50 +452,25 @@ type Customer =
 
 > Our challenge is to turn a Dictionary into a record!
 
----
-
-# Domain Types
-
-```fsharp
-let buildCustomer id email verified dob balance =
-  { Id = id 
-    Email = email
-    IsVerified = verified 
-    DateOfBirth = dob 
-    Balance = balance }
-```
-
---
-
-```fsharp
-let readCustomer =
-  buildCustomer
-  <!> guidAttrReader    "id"
-  <*> stringAttrReader  "email"
-  <*> boolAttrReader    "verified"
-  <*> dateAttrReader    "dob"
-  <*> decimalAttrReader "balance"
-```
 
 
 ---
 
 # Reader Applicative
 
-* using `map` & `apply` function
+* using "map" & "apply" function
 
-* parallel implementation
+* independent evaluation
 
-* not monadic `return` & `bind`
+* not monadic "return" & "bind"
 
+--
 
----
+* errors collected
 
-# Result Reader
+* optional items
 
-* idomatic error handling
-
-* option type
+* nested records
 
 
 ---
@@ -498,6 +482,7 @@ let readCustomer =
 
 # Fin
 
+
 ---
 
 
@@ -507,6 +492,7 @@ let readCustomer =
     </script>
     <script>
         var slideshow = remark.create({
+            ration: '16:9',
             highlightLanguage: 'fsharp',
             highlightStyle: 'solarized-dark',
             countIncrementalSlides: false,

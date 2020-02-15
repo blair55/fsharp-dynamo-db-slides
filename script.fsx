@@ -1,3 +1,7 @@
+
+
+
+
 #load ".paket/load/netcoreapp3.1/main.group.fsx"
 
 open System
@@ -11,8 +15,6 @@ open Amazon.DynamoDBv2
 open Amazon.DynamoDBv2.Model
 
 
-
-
 let table = "fs-wrapper"
 let credentials = new StoredProfileAWSCredentials("sandbox");
 let client = new AmazonDynamoDBClient (credentials, RegionEndpoint.EUWest2)
@@ -22,8 +24,9 @@ let prnt = printfn "\n\n---------\n\n%s\n\n---------\n\n"
 let toDictionary m = dict m |> Dictionary<string,AttributeValue>
 let rsp f g =
   try (runSync >> f >> srlz >> prnt) g
-  with | :? AggregateException as e -> prnt e.InnerException.Message
-       | _ as e -> prnt e.Message
+  with | :? AggregateException as e
+        -> prnt ("EXN: " + e.InnerException.Message)
+       | _ as e -> prnt ("EXN: " + e.Message)
 
 
 
@@ -49,9 +52,9 @@ let ``empty attribute value`` =
 
 
 let ``basic put item`` =
-  [ "id", new AttributeValue (S = "foo")
+  [ "id"   , new AttributeValue (S = "foo")
     "total", new AttributeValue (N = "123.45")
-    "isOk", new AttributeValue (BOOL = true) ]
+    "isOk" , new AttributeValue (BOOL = true) ]
   |> toDictionary
   |> fun attributes ->
     new PutItemRequest (table, attributes)
@@ -104,7 +107,8 @@ let ``advanced put item`` =
                              "size", new AttributeValue (N = "9")
                              "locations",
                                 new AttributeValue (
-                                 L = ResizeArray [ new AttributeValue (S = "xxx") ]) ]
+                                 L = ResizeArray
+                                  [ new AttributeValue (S = "xxx") ]) ]
                            |> toDictionary)) ]
   |> toDictionary
   |> fun attributes ->
@@ -134,6 +138,11 @@ let ``get rich item`` =
     |> rsp (fun r -> r.Item)
 
 
+
+
+
+
+/// <<<<<
 
 
 
@@ -182,7 +191,7 @@ let ``basic put item with error`` =
 
 
 
-
+Set.empty
 Set.empty |> Set.add 4
 Set.empty |> Set.add 4 |> Set.add 5
 Set.empty |> Set.add 4 |> Set.add 5 |> Set.add 4
@@ -201,6 +210,25 @@ Set.empty |> Set.add 4 |> Set.add 5 |> Set.add 4
 
 
 
+type NonEmptyList<'a> when 'a : comparison =
+  | NonEmptyList of head:'a * tail:'a list
+
+
+
+
+
+
+
+let toSet (NonEmptyList (head, tail)) =
+  Set.ofList tail |> Set.add head
+
+
+
+
+
+
+
+
 
 
 
@@ -210,8 +238,11 @@ Set.empty |> Set.add 4 |> Set.add 5 |> Set.add 4
 
 /// DOMAIN MODEL
 
+
+
 type Attr =
   | Attr of name:string * value:AttrValue
+
 
 and AttrValue =
 
@@ -232,8 +263,6 @@ and AttrValue =
   | DocList of AttrValue list
   | DocMap of Attr list
 
-and NonEmptyList<'a> when 'a : comparison =
-  | NonEmptyList of h:'a * t:'a list
 
 
 
@@ -250,18 +279,6 @@ and NonEmptyList<'a> when 'a : comparison =
 
 
 
-
-
-let toSet (NonEmptyList (h, t)) =
-  Set.ofList t |> Set.add h
-
-
-let toGzipMemoryStream (s:string) =
-  let output = new MemoryStream ()
-  use zipStream = new GZipStream (output, CompressionMode.Compress, true)
-  use writer = new StreamWriter (zipStream)
-  writer.Write s
-  output
 
 
 let rec mapAttrValue = function
@@ -270,7 +287,7 @@ let rec mapAttrValue = function
   | ScalarDate    d -> new AttributeValue (S = d.ToString("s"))
   | ScalarInt32   i -> new AttributeValue (N = string i)
   | ScalarDecimal d -> new AttributeValue (N = string d)
-  | ScalarBinary  s -> new AttributeValue (B = toGzipMemoryStream s)
+  | ScalarBinary  b -> new AttributeValue (B = toGzipMemoryStream b)
   | ScalarBool    b -> new AttributeValue (BOOL = b)
   | ScalarNull      -> new AttributeValue (NULL = true)
   | SetString    ss -> new AttributeValue (SS = ResizeArray (toSet ss))
@@ -280,12 +297,24 @@ let rec mapAttrValue = function
   | DocList       l -> new AttributeValue (L = ResizeArray (List.map mapAttrValue l))
   | DocMap        m -> new AttributeValue (M = mapAttrsToDictionary m)
 
+
+
 and mapAttr (Attr (name, value)) =
   name, mapAttrValue value
+
+
 
 and mapAttrsToDictionary =
   List.map mapAttr >> dict >> Dictionary<string,AttributeValue>
 
+
+
+and toGzipMemoryStream (s:string) =
+  let output = new MemoryStream ()
+  use zipStream = new GZipStream (output, CompressionMode.Compress, true)
+  use writer = new StreamWriter (zipStream)
+  writer.Write s
+  output
 
 
 
@@ -322,8 +351,7 @@ let ``advanced put item using model`` =
         ])
     Attr ("ASetOfNumbers",
       SetDecimal (NonEmptyList (2m, [3m; 4m; 2m])))
-  ]
-  |> putItem table
+  ] |> putItem table
 
 
 
@@ -355,6 +383,7 @@ let ``get rich item 2`` =
 
 
 /// <<< view item in table
+/// 
 /// <<< back to slides
 
 
@@ -384,11 +413,11 @@ type Customer =
 
 
 let ``put customer`` (customer:Customer) =
-  [ Attr ("id", ScalarGuid customer.Id)
-    Attr ("email", ScalarString customer.Email)
-    Attr ("verified", ScalarBool customer.IsVerified)
-    Attr ("dob", ScalarDate customer.DateOfBirth)
-    Attr ("balance", ScalarDecimal customer.Balance) ]
+  [ Attr ("id"      , ScalarGuid    customer.Id         )
+    Attr ("email"   , ScalarString  customer.Email      )
+    Attr ("verified", ScalarBool    customer.IsVerified )
+    Attr ("dob"     , ScalarDate    customer.DateOfBirth)
+    Attr ("balance" , ScalarDecimal customer.Balance    ) ]
   |> putItem table
 
 
@@ -448,24 +477,36 @@ let ``get customer`` customerId f =
 /// ERRORS?
 
 
-// incorrect attribute name
-// read wrong property
-// corrupt data
+// incorrect attribute name (imail)
+// read wrong property (balance N vs S)
+// corrupt dob
 // no record returned
+
+
+
+let customerIdWithErrors =
+  Guid.NewGuid()
+
+let ``put customer with errors`` =
+  [ Attr ("id"       , ScalarGuid    customerIdWithErrors   )
+    Attr ("email"    , ScalarString  "email@tm.com"         )
+    Attr ("verified" , ScalarBool    true                   )
+    Attr ("dob"      , ScalarDate   (new DateTime(2000, 1, 1)))
+    // Attr ("dob"      , ScalarString  "not a date"        )
+    Attr ("balance"  , ScalarDecimal 4456.3m                ) ]
+  |> putItem table
 
 
 let makeCustomerWithError (d:Dictionary<string,AttributeValue>) =
   { Id          =     Guid.Parse d.["id"].S
-    Email       =                d.["imail"].S
+    Email       =                d.["email"].S
     IsVerified  =                d.["verified"].BOOL
     DateOfBirth = DateTime.Parse d.["dob"].S
     Balance     =        decimal d.["balance"].N }
 
+``get customer`` customerIdWithErrors makeCustomerWithError
 
-
-``get customer`` customerId makeCustomerWithError
-
-// ``get customer`` (Guid.NewGuid()) makeCustomerWithError
+``get customer`` (Guid.NewGuid()) makeCustomerWithError
 
 
 
@@ -491,9 +532,22 @@ let makeCustomerWithError (d:Dictionary<string,AttributeValue>) =
 let toMap d =
   Seq.map (|KeyValue|) d |> Map.ofSeq
 
+
+
+
+// let find =
+//   Map.tryFind
+
+
+
+
+
 let optionToResult e = function
   | Some x -> Ok x
   | None -> Error e
+
+
+
 
 let parseGuid e (s:String) =
   match Guid.TryParse s with
@@ -512,34 +566,44 @@ let parseDecimal e (s:String) =
 
 
 
+
+
 let getAttr key f =
   Map.tryFind key
   >> optionToResult (sprintf "could not find attr %s" key)
   >> Result.map f
 
-let getAttrString key =
-  getAttr key (fun (a:AttributeValue) -> a.S)
-  >> Result.mapError List.singleton
+
+
+
+let getAttrString key m =
+  getAttr key (fun (a:AttributeValue) -> a.S) m
+  |> Result.mapError List.singleton
   
-let getAttrBool key =
-  getAttr key (fun (a:AttributeValue) -> a.BOOL)
-  >> Result.mapError List.singleton
 
-let getAttrNumber key =
-  getAttr key (fun (a:AttributeValue) -> a.N)
-  >> Result.mapError List.singleton
+let getAttrBool key m =
+  getAttr key (fun (a:AttributeValue) -> a.BOOL) m
+  |> Result.mapError List.singleton
+  
 
-let getAttrDate key =
-  getAttrString key
-  >> Result.bind (parseDate [sprintf "could not parse %s as date" key])
+let getAttrNumber key m =
+  getAttr key (fun (a:AttributeValue) -> a.N) m
+  |> Result.mapError List.singleton
 
-let getAttrGuid key =
-  getAttrString key
-  >> Result.bind (parseGuid [sprintf "could not parse %s as guid" key])
 
-let getAttrDecimal key =
-  getAttrNumber key
-  >> Result.bind (parseDecimal [sprintf "could not parse %s as decimal" key])
+let getAttrDate key m =
+  getAttrString key m
+  |> Result.bind (parseDate [sprintf "could not parse %s as date" key])
+
+
+let getAttrGuid key m =
+  getAttrString key m
+  |> Result.bind (parseGuid [sprintf "could not parse %s as guid" key])
+
+
+let getAttrDecimal key m =
+  getAttrNumber key m
+  |> Result.bind (parseDecimal [sprintf "could not parse %s as decimal" key])
 
 
 
@@ -556,17 +620,23 @@ let getAttrDecimal key =
 
 
 
-type AttrMap =
-  Map<string, AttributeValue>
+
 
 
 type AttrReader<'a> =
-  AttrReader of (AttrMap -> 'a)
+  AttrReader of (Map<string, AttributeValue> -> 'a)
 
 
-/// " give me an attr key, and I will give a you an attr reader, 
+
+
+
+
+
+
+
+/// " give me an attr key, I will give a you an attr reader, 
 ///   that, when given an attr map, will return the
-///   result of trying to read & parse the attr key "
+///   result of trying to read & parse the attr "
 
 
 let stringAttrReader key =
@@ -602,11 +672,37 @@ let boolAttrReader =
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /// Async<'a>
 /// Option<'a>
 /// Result<'a>
 
 /// AttrReader<'a>
+
+/// AttrReader<Result<'a, 'b>>
+
 
 
 
@@ -617,8 +713,11 @@ let boolAttrReader =
 
 
 /// retn :                   'a -> Wrapper<'a>
+/// 
 /// map  :           ('a -> 'b) -> Wrapper<'a> -> Wrapper<'b>
+/// 
 /// bind :  ('a -> Wrapper<'b>) -> Wrapper<'a> -> Wrapper<'b>
+/// 
 /// apply:  Wrapper<('a -> 'b)> -> Wrapper<'a> -> Wrapper<'b>
 
 
@@ -630,7 +729,7 @@ let boolAttrReader =
 
 
 
-module AttrReader =
+module AttrReader = begin
 
 
 
@@ -652,93 +751,13 @@ module AttrReader =
 
 
 
+end
 
 
 
 
 
-  /// map : ('a -> 'b) -> Wrapper<'a> -> Wrapper<'b>
-
-  let map f readerA =
-    let newReader m =
-      let unwrappedA = run readerA m
-      let b = f unwrappedA
-      b
-    AttrReader newReader
-
-
-
-
-
-
-
-  /// bind : ('a -> Wrapper<'b>) -> Wrapper<'a> -> Wrapper<'b>
-
-  let bind f readerA = 
-    let newReader m =
-      let unwrappedA = run readerA m
-      let readerB = f unwrappedA
-      let unwrappedB = run readerB m 
-      unwrappedB
-    AttrReader newReader
-
-
-
-
-
-
-
-  /// apply : Wrapper<('a -> 'b)> -> Wrapper<'a> -> Wrapper<'b>
-
-  let apply f readerA =
-    let newReader m =
-      let unwrappedF = run f m
-      let unwrappedA = run readerA m
-      let b = unwrappedF unwrappedA
-      b
-    AttrReader newReader
-
-
-
-
-
-
-
-
-let buildCustomer id email verified dob balance =
-  { Id = id 
-    Email = email
-    IsVerified = verified 
-    DateOfBirth = dob 
-    Balance = balance }
-
-
-
-let ``mapped builder`` =
-  AttrReader.map buildCustomer
-
-// ``mapped builder`` (guidAttrReader "id")
-
-
-
-
-/// Async<'a>
-/// Option<'a>
-/// Result<'a>
-
-/// AttrReader<'a>
-
-/// AttrReader<Result<'a, 'b>>
-
-
-
-
-
-
-
-
-
-module AttrReaderResult =
+module AttrReaderResult = begin
 
 
 
@@ -803,7 +822,6 @@ module AttrReaderResult =
 
 
 
-
   /// apply : Wrapper<('a -> 'b)> -> Wrapper<'a> -> Wrapper<'b>
 
   let apply f readerResultA =
@@ -822,6 +840,7 @@ module AttrReaderResult =
     AttrReader newReader
 
 
+end
 
 
 
@@ -829,34 +848,112 @@ module AttrReaderResult =
 
 
 
-let ``mapped result builder`` x =
-  AttrReaderResult.map buildCustomer x
 
 
 
+
+
+
+let buildCustomer id email verified dob balance =
+  { Id = id 
+    Email = email
+    IsVerified = verified 
+    DateOfBirth = dob 
+    Balance = balance }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let rb =
+  buildCustomer
+
+
+
+/// map : ('a -> 'b) -> Wrapper<'a> -> Wrapper<'b>
 
 
 
 let r0 =
-  buildCustomer
+  AttrReaderResult.map buildCustomer
+
+
+
+// let stringAttrReader2 =
+//   getAttrString >> AttrReader
+
+
+
 
 let r1 =
-  AttrReaderResult.map r0
+  r0 (guidAttrReader "id")
+
+
+
+
+
+
+
+
+
+/// apply : Wrapper<('a -> 'b)> -> Wrapper<'a> -> Wrapper<'b>
+
 
 let r2 =
-  r1 (guidAttrReader "id")
-
+  AttrReaderResult.apply r1
+  
 let r3 =
-  AttrReaderResult.apply r2 (stringAttrReader "email")
+  r2 (stringAttrReader "email")
+
+
+
+
+
+
+
 
 let r4 =
-  AttrReaderResult.apply r3 (boolAttrReader "verified")
-
+  AttrReaderResult.apply r3 
+  
 let r5 =
-  AttrReaderResult.apply r4 (dateAttrReader "dob")
+  r4 (boolAttrReader "verified")
+
+
+
+
+
+
+
 
 let r6 =
-  AttrReaderResult.apply r5 (decimalAttrReader "balance")
+  AttrReaderResult.apply r5
+  
+let r7 =
+  r6 (dateAttrReader "dob")
+
+
+
+
+
+
+
+
+let r8 =
+  AttrReaderResult.apply r7
+  
+let r9 =
+  r8 (decimalAttrReader "balance")
 
 
 
@@ -871,6 +968,16 @@ let r6 =
 
 let (<!>) = AttrReaderResult.map
 let (<*>) = AttrReaderResult.apply
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -926,21 +1033,37 @@ let ``get customer with reader`` =
 
 
 
+
+
+
+
+
+/// ERRORS?
+ 
+
+
+
+let badCustomerId2 =
+  Guid.NewGuid()
+
+
 let ``put bad customer`` =
-  [ Attr ("id", ScalarGuid customerId )
+  [ Attr ("id", ScalarGuid badCustomerId2 )
   // [ Attr ("id", ScalarString "bad id" )
     Attr ("email", ScalarString "bad_record@tm.com")
     Attr ("verified", ScalarBool true)
-    Attr ("dob", ScalarString "not a date")
+    Attr ("dob", ScalarDate (new DateTime(2000, 1, 1)))
+    // Attr ("dob", ScalarString "not a date")
     Attr ("balance", ScalarDecimal 23m) ]
     // Attr ("balance_typo", ScalarDecimal 23m) ]
   |> putItem table
 
 
 let ``get bad customer`` =
-  [ Attr ("id", ScalarGuid customerId) ]
+  [ Attr ("id", ScalarGuid badCustomerId2) ]
   // [ Attr ("id", ScalarString "bad id") ]
   |> getItem table readCustomer
+
 
 
 
@@ -1005,20 +1128,27 @@ let readCustomerWithPhone =
 
 
 
-
-let ``get customer with phone`` =
-  [ Attr ("id", ScalarGuid customerId) ]
-  |> getItem table readCustomerWithPhone
+let customerWithPhoneId =
+  Guid.NewGuid()
 
 
 let ``put customer with phone`` =
-  [ Attr ("id", ScalarGuid customerId )
-    Attr ("email", ScalarString "someone@tm.com")
+  [ Attr ("id",       ScalarGuid customerWithPhoneId )
+    Attr ("email",    ScalarString "someone@tm.com")
     Attr ("verified", ScalarBool true)
-    Attr ("dob", ScalarString "2000-01-01")
-    Attr ("balance", ScalarDecimal 3405.25m)
-    Attr ("phone", ScalarString "07987000333") ]
+    Attr ("dob",      ScalarString "2000-01-01")
+    Attr ("balance",  ScalarDecimal 3405.25m) 
+    Attr ("phone",    ScalarString "07987000333") ]
   |> putItem table
+
+
+
+let ``get customer with phone`` =
+  [ Attr ("id", ScalarGuid customerWithPhoneId) ]
+  |> getItem table readCustomerWithPhone
+
+
+
 
 
 
@@ -1063,9 +1193,10 @@ let buildCustomerWithAddress id email verified address dob balance =
 
 
 
-let getAttrMap key =
-  getAttr key (fun (a:AttributeValue) -> a.M)
-  >> Result.mapError List.singleton
+// let getAttrMap key m =
+//   getAttr key (fun (a:AttributeValue) -> a.M) m
+//   |> Result.mapError List.singleton
+
 
 let mapAttrReader key f =
   getAttr key (fun (a:AttributeValue) -> toMap a.M)
@@ -1086,9 +1217,9 @@ let parseInt e (s:String) =
   | true, x -> Ok x
   | _ -> Error e
 
-let getAttrInt key =
-  getAttrNumber key
-  >> Result.bind (parseInt [sprintf "could not parse %s as integer" key])
+let getAttrInt key m =
+  getAttrNumber key m
+  |> Result.bind (parseInt [sprintf "could not parse %s as integer" key])
 
 let intAttrReader =
   getAttrInt >> AttrReader
@@ -1135,14 +1266,15 @@ let ``put nested customer`` =
           Attr ("second", ScalarString "Camden")
           Attr ("postcode", ScalarString "NW6 7WK")
           Attr ("country", ScalarInt32 44) ] )
+          // Attr ("country", ScalarString "not a number") ] )
     Attr ("dob", ScalarDate (new DateTime(2000,01,01)))
     Attr ("balance", ScalarDecimal 3405.25m) ]
   |> putItem table
 
 
 let ``get nested customer`` =
-  // [ Attr ("id", ScalarGuid customerId) ]
-  [ Attr ("id", ScalarGuid nestedCustomerId) ]
+  [ Attr ("id", ScalarGuid customerId) ]
+  // [ Attr ("id", ScalarGuid nestedCustomerId) ]
   |> getItem table readCustomerWithAddress
 
 
