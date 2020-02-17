@@ -10,14 +10,15 @@ open System.IO.Compression
 open System.Collections.Generic
 open Newtonsoft.Json
 open Amazon
-open Amazon.Runtime
 open Amazon.DynamoDBv2
 open Amazon.DynamoDBv2.Model
-
+open Amazon.Runtime.CredentialManagement
 
 let table = "fs-wrapper"
-let credentials = new StoredProfileAWSCredentials("sandbox");
-let client = new AmazonDynamoDBClient (credentials, RegionEndpoint.EUWest2)
+let getCredentials profile =
+    match (new CredentialProfileStoreChain()).TryGetAWSCredentials profile with
+    | true, p -> p | _ -> failwith "Failed to load sandbox profile"
+let client = new AmazonDynamoDBClient (getCredentials "sandbox", RegionEndpoint.EUWest2)
 let runSync f = (Async.AwaitTask >> Async.RunSynchronously) f
 let srlz o = JsonConvert.SerializeObject(o, Formatting.Indented)
 let prnt = printfn "\n\n---------\n\n%s\n\n---------\n\n"
