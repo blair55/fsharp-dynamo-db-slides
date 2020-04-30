@@ -29,11 +29,27 @@ let rsp f g =
         -> prnt ("EXN: " + e.InnerException.Message)
        | _ as e -> prnt ("EXN: " + e.Message)
 
+CreateTableRequest(
+  TableName = table,
+  ProvisionedThroughput = new ProvisionedThroughput(ReadCapacityUnits=1L, WriteCapacityUnits=1L),
+  KeySchema = ResizeArray [
+    KeySchemaElement (AttributeName = "id", KeyType = KeyType.HASH) ],
+  AttributeDefinitions = ResizeArray [
+    AttributeDefinition (AttributeName = "id", AttributeType = ScalarAttributeType.S) ])
+|> client.CreateTableAsync
+|> rsp id
+
+
+DeleteTableRequest(TableName = table)
+|> client.DeleteTableAsync 
+|> rsp id
 
 
 /// THEME / SIZE
 
 
+let toMap d =
+  Seq.map (|KeyValue|) d |> Map.ofSeq
 
 
 
@@ -80,7 +96,20 @@ let ``basic get item`` =
     |> rsp (fun r -> r.Item)
 
 
+let ``does item exist`` =
+  [ "id", new AttributeValue (S = "foo") ]
+  |> toDictionary
+  |> fun attributes ->
+    new GetItemRequest (table, attributes)
+    |> client.GetItemAsync
+    |> rsp (fun r -> toMap r.Item |> Map.isEmpty |> not)
 
+[ "id", new AttributeValue (S = "foo") ]
+|> toDictionary
+|> fun attributes ->
+  new DeleteItemRequest (table, attributes)
+  |> client.DeleteItemAsync
+  |> rsp id
 
 
 
@@ -530,8 +559,6 @@ let makeCustomerWithError (d:Dictionary<string,AttributeValue>) =
 
 
 
-let toMap d =
-  Seq.map (|KeyValue|) d |> Map.ofSeq
 
 
 
